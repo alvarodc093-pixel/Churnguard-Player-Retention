@@ -1,92 +1,85 @@
-# ChurnGuard — que ningún jugador se vaya sin avisar
+# ChurnGuard — retención de jugadores en juegos free-to-play
 
-**En una frase:** ayudamos a los juegos gratuitos (F2P) de PC a detectar qué jugadores necesitan atención, por qué y qué hacer.
+Detecta qué jugadores de un juego gratuito de PC tienen riesgo de dejarlo, explica por qué y propone una acción. Proyecto de análisis y machine learning con 41.560 reseñas públicas de Steam.
 
-Somos **NO PAIN NO GAME**. Cliente piloto: **PlayNova Games**.
+**Demo:** https://no-pain-no-game.vercel.app
 
----
+El proyecto se plantea como la propuesta de una startup ficticia (*NO PAIN NO GAME*) a un cliente también ficticio (*PlayNova Games*, un publisher de juegos F2P). Los datos y los modelos son reales.
 
-## 1. Ver la web en tu ordenador (30 segundos)
+## Datos
 
-La web está en la carpeta `web/`. Es solo HTML/CSS/JS, no hay que instalar nada.
+- **Fuente:** API pública de reseñas de Steam (`appreviews`, sin key), descargada el 02/10/2026.
+- **Juegos:** Dota 2, Team Fortress 2, Warframe, Path of Exile, Apex Legends y Fall Guys (unas 7.000 reseñas por juego).
+- **Variables:** de cada autor, horas jugadas totales, en el momento de la reseña y en las últimas dos semanas, fecha de última partida, juegos en la cuenta y número de reseñas; de cada reseña, el voto, la longitud del texto, el idioma y si el juego fue gratis o reembolsado.
+- **Etiqueta de churn:** al menos 2 h jugadas, 0 minutos en las últimas dos semanas y más de 30 días sin jugar. Activo: ha jugado en las últimas dos semanas. Los casos ambiguos (2.082) se descartan, y quedan **39.478 jugadores etiquetados, con un 34,5 % de churn**.
 
-**Opción A - la más fácil:**
-1. Abre la carpeta `web`
-2. Doble clic en `index.html`
+Procedencia completa en [docs/08_datos_reales.md](docs/08_datos_reales.md).
 
-**Opción B - como se verá online (recomendada para presentar):**
+## Hallazgos
+
+Detalle y gráficos en [docs/04_analisis.md](docs/04_analisis.md) y [notebooks/EDA.ipynb](notebooks/EDA.ipynb).
+
+- **El enganche temprano protege:** el churn baja del 44,1 % entre quienes llevaban ≤19 h al reseñar al 22,1 % entre quienes llevaban más de 498 h.
+- **Gustar no retiene:** el churn es casi igual entre quienes recomiendan el juego (34,3 %) y quienes no (35,2 %).
+- **Cada juego está en una fase distinta:** en la muestra, el churn va del 6,4 % de Dota 2 al 93,7 % de Fall Guys. Son tasas entre reseñistas, no la retención real de cada juego, pero ordenan bien su momento de vida.
+
+## Modelos
+
+Dos Random Forest (scikit-learn) entrenados en `src/train_real.py`. Las variables que definen las etiquetas (horas totales, últimas dos semanas, última partida) no entran en el modelo.
+
+| Modelo | Qué predice | ROC-AUC | PR-AUC (base) | F1 |
+|---|---|---|---|---|
+| Churn | Jugador inactivo | 0,927 | 0,892 (0,345) | 0,825 |
+| Valor | Top 25 % de horas y recomienda el juego | 0,974 | 0,877 (0,200) | 0,841 |
+
+Evaluación en un test de 7.896 jugadores; por juego, el ROC-AUC del modelo de churn va de 0,852 a 0,917 (`src/eval_per_title.py`). Las métricas se reproducen ejecutando `python src/train_real.py`.
+
+## Limitaciones
+
+- **Muestra de reseñistas:** quien escribe una reseña no representa a todos los jugadores.
+- **Antigüedad de la reseña:** es la variable con más peso del modelo de churn (0,55). Es una señal legítima, pero las ventanas de reseñas son muy distintas entre juegos (21 días en Dota 2 frente a más de 800 en Fall Guys), así que parte de lo que aprende el modelo es el momento de cada juego.
+- **Modelo de valor:** no hay datos de gasto. "Valor" es un indicador aproximado (horas + recomendación), y como las horas en la reseña están muy relacionadas con las horas totales, su ROC-AUC alto debe leerse con cautela.
+- **Umbral único:** con prevalencias del 6 % al 94 %, un umbral global de 0,5 da F1 muy distintos por juego; habría que calibrarlo por título.
+- **Demo web:** el simulador de la web es una versión ilustrativa calibrada a partir de los resultados, no ejecuta el `.pkl` entrenado.
+
+## Ejecutarlo
+
+La web es estática (`web/`):
+
 ```bash
 cd web
-python -m http.server 8321
+python -m http.server 8321   # http://localhost:8321
 ```
-Luego abre en el navegador: `http://localhost:8321`
 
-Qué vas a ver: problema → datos reales → solución → demo con sliders → piloto 4 semanas. Arriba a la derecha puedes cambiar idioma 🇪🇸 🇬🇧 🇫🇷 🇩🇪.
-
----
-
-## 2. Ver la web online (Vercel)
-
-Una vez desplegada, la URL es algo como:
-
-`https://tu-proyecto.vercel.app`
-
-Cada vez que subes un cambio a `main` en GitHub, Vercel la actualiza sola.
-
----
-
-## 3. Re-desplegar desde cero (2 minutos)
-
-Solo necesitas la cuenta de GitHub con este repo.
-
-1. Entra en `vercel.com/new`
-2. `Add GitHub Account` si es la primera vez, y elige este repo: `alvarodc093-pixel/NO-PAIN-NO-GAME`
-3. En la pantalla de configuración pon esto **tal cual**:
-   - `Framework Preset: Other`
-   - `Root Directory: web`
-   - `Build Command:` vacío (nada)
-   - `Output Directory:` vacío (nada)
-4. Pulsa `Deploy`. En ~30s te da la URL.
-
-> ¿Por qué `Root Directory: web`? Porque en la raíz del repo hay Python (`requirements.txt`, `src/`) del análisis de datos. Si dejas Root en `./`, Vercel cree que es un backend Python y falla. Apuntando a `web` solo ve la página estática y funciona siempre.
-
-Para actualizar: solo haz `git push origin main`. No hay que tocar nada en Vercel.
-
----
-
-## 4. Si algo falla al desplegar
-
-| Error | Causa | Solución |
-|---|---|---|
-| `No python entrypoint found` | Root Directory en `./`, detecta Python | Pon `Root Directory: web`, `Framework: Other` |
-| `points to a different repository` | El proyecto Vercel está conectado a otro repo | `Project > Settings > Git > Disconnect` y conecta el repo correcto |
-| `could not find branch or commit` | Vercel pide una rama que no existe | `Settings > Git > Production Branch = main`. No re-despliegues commits viejos, haz un push nuevo |
-
-El fichero `vercel.json` de la raíz ya está como respaldo:
-```json
-{ "framework": null, "buildCommand": null, "outputDirectory": "web" }
-```
-Pero lo que manda es el `Root Directory: web` del paso 3.
-
----
-
-## 5. Nuestros datos (en simple)
-
-- **41.560 opiniones públicas de Steam** (02-10-2026) de 6 juegos: Dota 2, TF2, Warframe, Path of Exile, Apex Legends, Fall Guys.
-- **39.478 jugadores** etiquetados. El resto no tenía datos suficientes.
-- Horas jugadas y nº de juegos salen de la API pública de Steam (`appreviews/{appid}?json=1`, bloque `author`: `playtime_forever`, `playtime_at_review`, `num_games_owned`...). Ver `src/fetch_steam_reviews.py` y `src/build_real_dataset.py`.
-- El 94% de Fall Guys **no** es su abandono real, es solo dentro de nuestra muestra de reseñistas. Lo avisamos en la web.
-
-## 6. Para curiosos (técnico)
+Pipeline de datos y modelos:
 
 ```bash
 pip install -r requirements.txt
-python src/fetch_steam_reviews.py    # descarga opiniones
+python src/fetch_steam_reviews.py    # descarga las reseñas (~15 min)
 python src/build_real_dataset.py     # crea data/playnova_real.db
-python src/train_real.py             # entrena modelos en models/
+python src/train_real.py             # entrena los modelos en models/
+python src/eval_per_title.py         # métricas por juego
 ```
 
-Estructura: `web/` página · `src/` programas · `data/` base de datos · `models/` modelos · `notebooks/` análisis · `docs/` explicaciones.
+La base (`data/playnova_real.db`) y los modelos ya están en el repo, así que el notebook y el entrenamiento funcionan sin volver a descargar nada.
 
----
-ChurnGuard — NO PAIN NO GAME · 2026 · Datos públicos de Steam.
+## Estructura
+
+```text
+├── web/          # Página con el problema, los datos, la solución y el simulador (ES/EN/FR/DE)
+├── src/          # Descarga, construcción del dataset, entrenamiento y evaluación
+├── data/         # Base SQLite y resumen
+├── models/       # Modelos entrenados y métricas
+├── notebooks/    # EDA
+└── docs/         # Cliente y modelo de datos, análisis, solución y fuentes
+```
+
+El despliegue en Vercel sirve la carpeta `web/` (ver `vercel.json`).
+
+## Tecnologías
+
+Python, Pandas, scikit-learn, SQLite, Jupyter, Matplotlib y HTML/CSS/JavaScript.
+
+## Autor
+
+Álvaro Domingo Cordón · [LinkedIn](https://www.linkedin.com/in/alvaro-domingo/) · [GitHub](https://github.com/alvarodc093-pixel)
