@@ -1,10 +1,17 @@
 # ChurnGuard — retención de jugadores en juegos free-to-play
 
-Detecta qué jugadores de un juego gratuito de PC tienen riesgo de dejarlo, explica por qué y propone una acción. Proyecto de análisis y machine learning con 41.560 reseñas públicas de Steam.
+**Detecta qué jugadores de un juego gratuito de PC están en riesgo de abandonarlo, explica por qué y propone una acción.**
 
-**Demo:** https://no-pain-no-game.vercel.app
+[![Demo](https://img.shields.io/badge/Demo-en%20vivo-2ea44f?style=flat-square)](https://no-pain-no-game.vercel.app) ![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white) ![scikit--learn](https://img.shields.io/badge/scikit--learn-ML-F7931E?style=flat-square&logo=scikitlearn&logoColor=white) ![Pandas](https://img.shields.io/badge/Pandas-análisis-150458?style=flat-square&logo=pandas&logoColor=white) ![Web](https://img.shields.io/badge/Web-HTML%2FJS-E34F26?style=flat-square&logo=html5&logoColor=white)
 
-El proyecto se plantea como la propuesta de una startup ficticia (*NO PAIN NO GAME*) a un cliente también ficticio (*PlayNova Games*, un publisher de juegos F2P). Los datos y los modelos son reales.
+![Portada de la web de ChurnGuard](docs/img/portada.png)
+
+## En resumen
+
+- **Problema:** un juego free-to-play pierde jugadores sin saber quiénes ni por qué hasta que ya se han ido.
+- **Datos:** 41.560 reseñas públicas de Steam de 6 juegos (Dota 2, Apex Legends, Fall Guys...), con horas jugadas y actividad reciente de cada autor.
+- **Resultado:** modelo de churn con ROC-AUC de 0,93 (entre 0,85 y 0,92 dentro de cada juego) y una web que traduce la puntuación en motivo y acción.
+- **Contexto:** planteado como la propuesta de una startup ficticia (*NO PAIN NO GAME*) a un cliente también ficticio (*PlayNova Games*). Los datos y los modelos son reales.
 
 ## Datos
 
@@ -24,6 +31,8 @@ Detalle y gráficos en [docs/04_analisis.md](docs/04_analisis.md) y [notebooks/E
 - **Cada juego está en una fase distinta:** en la muestra, el churn va del 6,4 % de Dota 2 al 93,7 % de Fall Guys. Son tasas entre reseñistas, no la retención real de cada juego, pero ordenan bien su momento de vida.
 
 ## Modelos
+
+![Simulador de riesgo de abandono](docs/img/demo.png)
 
 Dos Random Forest (scikit-learn) entrenados en `src/train_real.py`. Las variables que definen las etiquetas (horas totales, últimas dos semanas, última partida) no entran en el modelo.
 
